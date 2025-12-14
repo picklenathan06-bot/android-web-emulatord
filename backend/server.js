@@ -1,19 +1,26 @@
 import { WebSocketServer } from "ws";
 
-const wss = new WebSocketServer({
-  port: process.env.PORT || 8080,
-});
+const wss = new WebSocketServer({ port: process.env.PORT || 8080 });
+const clients = new Set();
 
 wss.on("connection", (ws) => {
-  console.log("Client connected");
+  clients.add(ws);
+  console.log("Client connected. Total clients:", clients.size);
 
   ws.on("message", (msg) => {
     console.log("Received:", msg.toString());
-    ws.send("Hello from server");
+
+    // Broadcast the message to all connected clients
+    for (const client of clients) {
+      if (client.readyState === 1) {
+        client.send(msg.toString());
+      }
+    }
   });
 
   ws.on("close", () => {
-    console.log("Client disconnected");
+    clients.delete(ws);
+    console.log("Client disconnected. Total clients:", clients.size);
   });
 });
 
