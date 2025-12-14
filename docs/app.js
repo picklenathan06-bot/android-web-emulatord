@@ -2,10 +2,9 @@ let ws;
 const canvas = document.getElementById("screen");
 const ctx = canvas.getContext("2d");
 
-// Generate or retrieve persistent user ID
 let userId = localStorage.getItem("userId");
 if (!userId) {
-  userId = crypto.randomUUID(); // modern browsers
+  userId = crypto.randomUUID();
   localStorage.setItem("userId", userId);
 }
 console.log("Your persistent user ID:", userId);
@@ -19,11 +18,21 @@ function connect() {
   };
 
   ws.onmessage = (msg) => {
-    addMessage(`📡 Server says: ${msg.data}`);
+    try {
+      const data = JSON.parse(msg.data);
 
-    // Placeholder: fill canvas randomly (later replace with real Android frames)
-    ctx.fillStyle = "#" + Math.floor(Math.random() * 16777215).toString(16);
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (data.type === "frame") {
+        // Only draw frames meant for this user
+        if (data.userId === userId) {
+          ctx.fillStyle = data.color; // placeholder frame
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      } else {
+        addMessage(`📡 Server says: ${msg.data}`);
+      }
+    } catch (err) {
+      console.error("Invalid message:", msg.data);
+    }
   };
 
   ws.onclose = () => {
@@ -43,3 +52,19 @@ function addMessage(text) {
   div.appendChild(p);
   div.scrollTop = div.scrollHeight;
 }
+
+// Optional: send keyboard or mouse input
+document.addEventListener("keydown", (e) => {
+  if (ws && ws.readyState === 1) {
+    ws.send(`Input from User: ${userId} KeyDown: ${e.key}`);
+  }
+});
+
+canvas.addEventListener("click", (e) => {
+  if (ws && ws.readyState === 1) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ws.send(`Input from User: ${userId} Click: ${x},${y}`);
+  }
+});
