@@ -15,18 +15,40 @@ function connect() {
 
   ws.onopen = () => {
     addMessage(`✅ Connected to server! User: ${userId}`);
-    ws.send(`Hello from frontend User: ${userId}`);
+  
+    ws.send(JSON.stringify({
+      type: "hello",
+      userId: userId
+    }));
   };
+  
+  ws.send(JSON.stringify({
+    type: "stats",
+    fps: 10,
+    message: "Frame stream started"
+  }));
+  
 
   ws.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data);
       if (data.type === "frame" && data.userId === userId) {
-        // Draw frame image
         const img = new Image();
-        img.src = `data:image/png;base64,${data.image}`;
-        img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      } else {
+      
+        if (data.image) {
+          img.src = `data:image/png;base64,${data.image}`;
+          img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.fillStyle = data.color;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      
+      if (data.type === "stats") {
+        addMessage(`📊 Server FPS: ${data.fps}`);
+      }
+
+      else {
         addMessage(`📡 Server says: ${msg.data}`);
       }
     } catch (err) {
