@@ -7,10 +7,11 @@ if (!userId) {
   userId = crypto.randomUUID();
   localStorage.setItem("userId", userId);
 }
-console.log("Your persistent user ID:", userId);
 
 function connect() {
   ws = new WebSocket("wss://android-web-emulator-zdx5.onrender.com");
+
+  addMessage(`🔄 Connecting to server with User: ${userId}`);
 
   ws.onopen = () => {
     addMessage(`✅ Connected to server! User: ${userId}`);
@@ -20,13 +21,11 @@ function connect() {
   ws.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data);
-
-      if (data.type === "frame") {
-        // Only draw frames meant for this user
-        if (data.userId === userId) {
-          ctx.fillStyle = data.color; // placeholder frame
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+      if (data.type === "frame" && data.userId === userId) {
+        // Draw frame image
+        const img = new Image();
+        img.src = `data:image/png;base64,${data.image}`;
+        img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       } else {
         addMessage(`📡 Server says: ${msg.data}`);
       }
@@ -35,15 +34,37 @@ function connect() {
     }
   };
 
+
   ws.onclose = () => {
     addMessage(`❌ Disconnected from server. User: ${userId}`);
   };
-
-  ws.onerror = (err) => {
-    addMessage(`⚠️ WebSocket error: ${err}`);
-    console.error(err);
-  };
 }
+
+// Keyboard input
+document.addEventListener("keydown", (e) => {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({
+      type: "input",
+      userId,
+      action: "keydown",
+      key: e.key
+    }));
+  }
+});
+
+// Mouse click on canvas
+canvas.addEventListener("click", (e) => {
+  if (ws && ws.readyState === 1) {
+    const rect = canvas.getBoundingClientRect();
+    ws.send(JSON.stringify({
+      type: "input",
+      userId,
+      action: "click",
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    }));
+  }
+});
 
 function addMessage(text) {
   const div = document.getElementById("messages");
@@ -52,19 +73,3 @@ function addMessage(text) {
   div.appendChild(p);
   div.scrollTop = div.scrollHeight;
 }
-
-// Optional: send keyboard or mouse input
-document.addEventListener("keydown", (e) => {
-  if (ws && ws.readyState === 1) {
-    ws.send(`Input from User: ${userId} KeyDown: ${e.key}`);
-  }
-});
-
-canvas.addEventListener("click", (e) => {
-  if (ws && ws.readyState === 1) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    ws.send(`Input from User: ${userId} Click: ${x},${y}`);
-  }
-});

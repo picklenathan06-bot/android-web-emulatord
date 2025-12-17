@@ -1,38 +1,58 @@
 import { WebSocketServer } from "ws";
+import sessionManager from "./sessionManager.js";
+import emulatorManager from "./emulatorManager.js";
 
-const wss = new WebSocketServer({ port: process.env.PORT || 8080 });
-const clients = new Map(); // Map ws -> userId
+const PORT = process.env.PORT || 8080;
+const wss = new WebSocketServer({ port: PORT });
 
-function generateFakeFrame(userId) {
-  // Example: random color for each frame
-  const color = "#" + Math.floor(Math.random() * 16777215).toString(16);
-  return JSON.stringify({ type: "frame", color, userId });
-}
+console.log(`🚀 WebSocket server running on port ${PORT}`);
 
 wss.on("connection", (ws) => {
   let userId = null;
+  let frameInterval = null;
 
-  ws.on("message", (msg) => {
-    const text = msg.toString();
+  ws.on("message", (message) => {
+    let data;
 
-    // Extract userId from message
-    const match = text.match(/User: (.+)$/);
-    if (match) userId = match[1];
+    try {
+      data = JSON.parse(message);
+    } catch {
+      console.log("⚠️ Invalid JSON");
+      return;
+    }
 
-    clients.set(ws, userId);
+    // HELLO message (first message)
+    if (data.type === "hello") {
+      userId = data.userId;
 
-    console.log(`Received from User ${userId}: ${text}`);
+      const session = sessionManager.getOrCreateSession(userId, ws);
+      emulatorManager.startEmulator(session);
 
-    // Send a frame back to this user only
-    if (ws.readyState === 1) {
-      ws.send(generateFakeFrame(userId));
+      ws.send(
+        JSON.stringify({
+          type: "system",
+          message: `Hello User ${userId}, session ready`
+        })
+      );
+
+      // Fake frame stream (10 FPS)
+      frameInterval = setInterval(() => {
+        emulatorManager.sendFakeFrame(session);
+      }, 100);
+    }
+
+    // INPUT messages
+    if (data.type === "input") {
+      console.log(
+        `🎮 Input from ${data.userId}:`,
+        data.action,
+        data
+      );
     }
   });
 
   ws.on("close", () => {
-    clients.delete(ws);
-    console.log(`Client disconnected. User: ${userId}`);
+    if (frameInterval) clearInterval(frameInterval);
+    if (userId) sessionManager.removeSession(userId);
   });
 });
-
-console.log("WebSocket server running");
