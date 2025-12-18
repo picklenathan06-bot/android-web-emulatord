@@ -1,6 +1,7 @@
 let ws;
 const canvas = document.getElementById("screen");
 const ctx = canvas.getContext("2d");
+let currentApp = null;
 
 let userId = localStorage.getItem("userId");
 if (!userId) {
@@ -26,14 +27,17 @@ function connect() {
           const img = new Image();
           img.src = `data:image/png;base64,${data.image}`;
           img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        } else {
+        } else if (data.color) {
           ctx.fillStyle = data.color;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
       } else if (data.type === "stats") {
-        addMessage(`📊 Server FPS: ${data.fps}`);
+        document.getElementById("currentApp").textContent =
+          `App: ${currentApp || "None"} | FPS: ${data.fps}`;
       } else if (data.type === "system") {
         addMessage(`📡 ${data.message}`);
+        const match = data.message.match(/🎮 (.+) launched!/);
+        if (match) currentApp = match[1];
       }
     } catch (err) {
       console.error("Invalid message:", msg.data);
@@ -42,6 +46,11 @@ function connect() {
 
   ws.onclose = () => {
     addMessage(`❌ Disconnected from server. User: ${userId}`);
+    setTimeout(connect, 2000); // reconnect after 2s
+  };
+
+  ws.onerror = (err) => {
+    console.error("WebSocket error:", err.message);
   };
 }
 
@@ -85,4 +94,5 @@ function addMessage(text) {
   div.scrollTop = div.scrollHeight;
 }
 
+// Connect immediately
 connect();
