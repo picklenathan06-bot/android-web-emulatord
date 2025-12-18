@@ -10,56 +10,45 @@ if (!userId) {
 
 function connect() {
   ws = new WebSocket("wss://android-web-emulator-zdx5.onrender.com");
-
   addMessage(`🔄 Connecting to server with User: ${userId}`);
 
   ws.onopen = () => {
     addMessage(`✅ Connected to server! User: ${userId}`);
-  
-    ws.send(JSON.stringify({
-      type: "hello",
-      userId: userId
-    }));
+    ws.send(JSON.stringify({ type: "hello", userId }));
   };
-  
-  ws.send(JSON.stringify({
-    type: "stats",
-    fps: 10,
-    message: "Frame stream started"
-  }));
-  
 
   ws.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data);
+
       if (data.type === "frame" && data.userId === userId) {
-        const img = new Image();
-      
         if (data.image) {
+          const img = new Image();
           img.src = `data:image/png;base64,${data.image}`;
           img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         } else {
           ctx.fillStyle = data.color;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-      }
-      
-      if (data.type === "stats") {
+      } else if (data.type === "stats") {
         addMessage(`📊 Server FPS: ${data.fps}`);
-      }
-
-      else {
-        addMessage(`📡 Server says: ${msg.data}`);
+      } else if (data.type === "system") {
+        addMessage(`📡 ${data.message}`);
       }
     } catch (err) {
       console.error("Invalid message:", msg.data);
     }
   };
 
-
   ws.onclose = () => {
     addMessage(`❌ Disconnected from server. User: ${userId}`);
   };
+}
+
+function launchApp(appName) {
+  if (!ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: "launchApp", userId, app: appName }));
+  addMessage(`🎮 Launching ${appName}...`);
 }
 
 // Keyboard input
@@ -95,3 +84,5 @@ function addMessage(text) {
   div.appendChild(p);
   div.scrollTop = div.scrollHeight;
 }
+
+connect();

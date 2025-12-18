@@ -1,38 +1,21 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Android Web Emulator</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        padding: 20px;
-      }
-      button {
-        padding: 10px 20px;
-        font-size: 16px;
-        margin-bottom: 10px;
-      }
-      #messages {
-        border: 1px solid #ccc;
-        padding: 10px;
-        height: 150px;
-        width: 100%;
-        overflow-y: auto;
-        margin-bottom: 20px;
-      }
-      #screen {
-        border: 1px solid #000;
-        background-color: #000;
-        width: 640px;
-        height: 360px;
-      }
-    </style>
+    <title>PC App Streaming</title>
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <h1>Android Web Emulator</h1>
-    <button onclick="connect()">Connect to Server</button>
-    <div id="messages"></div>
-    <canvas id="screen" width="640" height="360"></canvas>
+    <div id="appPanel">
+      <h3>Apps</h3>
+      <button onclick="launchApp('Roblox')">Roblox</button>
+      <button onclick="launchApp('Minecraft')">Minecraft</button>
+      <button onclick="launchApp('Steam')">Steam</button>
+    </div>
+
+    <div id="screenContainer">
+      <canvas id="screen" width="800" height="450"></canvas>
+      <div id="messages"></div>
+    </div>
 
     <script src="app.js"></script>
   </body>

@@ -1,6 +1,6 @@
 import { WebSocketServer } from "ws";
 import sessionManager from "./sessionManager.js";
-import emulatorManager from "./emulatorManager.js";
+import pcAppManager from "./pcAppManager.js";
 
 const PORT = process.env.PORT || 8080;
 const wss = new WebSocketServer({ port: PORT });
@@ -9,11 +9,9 @@ console.log(`🚀 WebSocket server running on port ${PORT}`);
 
 wss.on("connection", (ws) => {
   let userId = null;
-  let frameInterval = null;
 
   ws.on("message", (message) => {
     let data;
-
     try {
       data = JSON.parse(message);
     } catch {
@@ -21,38 +19,35 @@ wss.on("connection", (ws) => {
       return;
     }
 
-    // HELLO message (first message)
-    if (data.type === "hello") {
-      userId = data.userId;
+    const session = sessionManager.getOrCreateSession(data.userId, ws);
 
-      const session = sessionManager.getOrCreateSession(userId, ws);
-      emulatorManager.startEmulator(session);
-
-      ws.send(
-        JSON.stringify({
+    switch (data.type) {
+      // First message from frontend
+      case "hello":
+        userId = data.userId;
+        ws.send(JSON.stringify({
           type: "system",
           message: `Hello User ${userId}, session ready`
-        })
-      );
+        }));
+        break;
 
-      // Fake frame stream (10 FPS)
-      frameInterval = setInterval(() => {
-        emulatorManager.sendFakeFrame(session);
-      }, 100);
-    }
+      // Launch PC app from side panel
+      case "launchApp":
+        if (session.appInterval) clearInterval(session.appInterval);
+        pcAppManager.launchApp(session, data.app);
+        break;
 
-    // INPUT messages
-    if (data.type === "input") {
-      console.log(
-        `🎮 Input from ${data.userId}:`,
-        data.action,
-        data
-      );
+      // Keyboard / mouse input
+      case "input":
+        console.log(`🎮 Input from ${data.userId}:`, data.action, data);
+        break;
     }
   });
 
   ws.on("close", () => {
-    if (frameInterval) clearInterval(frameInterval);
+    const session = sessionManager.getOrCreateSession(userId, ws);
+    if (session.appInterval) clearInterval(session.appInterval);
+    if (session.fpsInterval) clearInterval(session.fpsInterval);
     if (userId) sessionManager.removeSession(userId);
   });
 });

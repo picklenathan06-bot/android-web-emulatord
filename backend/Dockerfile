@@ -1,9 +1,15 @@
-FROM node:20
+# Use latest LTS Node
+FROM node:22-alpine
 
-WORKDIR /app
-COPY package.json .
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
 COPY . .
 EXPOSE 8080
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
