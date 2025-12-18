@@ -1,5 +1,5 @@
 # Use official Node 22 image
-FROM node:22-alpine
+FROM node:22-bullseye
 
 # Install system dependencies needed for node-canvas
 RUN apt-get update && apt-get install -y \
