@@ -9,7 +9,7 @@ if (!userId) {
 }
 
 function connect() {
-  ws = new WebSocket("wss://android-web-emulator-zdx5.onrender.com");
+  ws = new WebSocket("ws://localhost:8080");
   addMessage(`🔄 Connecting to server with User: ${userId}`);
 
   ws.onopen = () => {
